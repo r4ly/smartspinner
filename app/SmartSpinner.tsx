@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
-const OUTCOMES = ["1", "2", "3", "4"];
+const OPTIONS = ["work", "study", "instagram reels", "lock in"];
+const SEGMENT_COLORS = ["#4da6ff", "#f1cf52", "#4dff88", "#ff4d4d"];
+const SEGMENT_SIZE = 360 / OPTIONS.length;
+const WHEEL_OFFSET = 45;
+
 const DOWN_ANGLE = 180;
 const GRAVITY_ACCEL = 2500;
 const DRAG_LINEAR = 0.4;
@@ -15,10 +19,6 @@ const MAX_DT_SECONDS = 0.033;
 const STOP_SPEED = 1.8;
 const STOP_ANGLE_ERROR = 0.9;
 const STOP_STABLE_FRAMES = 18;
-
-type DeviceMotionPermissionApi = {
-  requestPermission?: () => Promise<"granted" | "denied">;
-};
 
 type ConfettiPiece = {
   id: number;
@@ -39,32 +39,27 @@ function angleDiff(target: number, current: number): number {
 }
 
 function getResultFromRotation(rotation: number): string {
-  const segmentSize = 360 / OUTCOMES.length;
-  const wheelOffset = 45;
   const arrowAngle = normalize(rotation);
-  const segmentIndex = Math.floor(normalize(arrowAngle - wheelOffset) / segmentSize) % OUTCOMES.length;
-  return OUTCOMES[segmentIndex] ?? "?";
+  const segmentIndex = Math.floor(normalize(arrowAngle - WHEEL_OFFSET) / SEGMENT_SIZE) % OPTIONS.length;
+  return OPTIONS[segmentIndex] ?? "?";
 }
 
-function detectMobile(): boolean {
-  if (typeof navigator === "undefined") {
-    return false;
+function playSound(audioRef: RefObject<HTMLAudioElement | null>) {
+  const audio = audioRef.current;
+  if (!audio) {
+    return;
   }
 
-  const ua = navigator.userAgent.toLowerCase();
-  const touch = navigator.maxTouchPoints > 1;
-  return /iphone|ipad|ipod|android|mobile/.test(ua) || touch;
+  audio.currentTime = 0;
+  void audio.play().catch(() => {
+    // Ignore autoplay restrictions.
+  });
 }
 
 export default function SmartSpinner() {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState("click spin");
-  const [gravityMode, setGravityMode] = useState<"simulated" | "device">("simulated");
-  const [sensorStatus, setSensorStatus] = useState(() =>
-    detectMobile() ? "gravity: mobile detected, tap enable mobile gravity" : "gravity: desktop fixed down",
-  );
-  const [isMobile] = useState(() => detectMobile());
   const [confettiPieces, setConfettiPieces] = useState<ConfettiPiece[]>([]);
 
   const rafRef = useRef<number | null>(null);
@@ -72,28 +67,11 @@ export default function SmartSpinner() {
   const rotationRef = useRef(0);
   const velocityRef = useRef(0);
   const settleFramesRef = useRef(0);
-  const gravityTargetRef = useRef(DOWN_ANGLE);
-  const hasSensorRef = useRef(false);
-  const motionHandlerRef = useRef<((event: DeviceMotionEvent) => void) | null>(null);
-  const motionTimeoutRef = useRef<number | null>(null);
   const gongAudioRef = useRef<HTMLAudioElement | null>(null);
   const tadaAudioRef = useRef<HTMLAudioElement | null>(null);
   const confettiTimeoutRef = useRef<number | null>(null);
 
-  const playSound = (audioRef: React.RefObject<HTMLAudioElement | null>) => {
-    const audio = audioRef.current;
-    if (!audio) {
-      return;
-    }
-
-    audio.currentTime = 0;
-    void audio.play().catch(() => {
-      // Ignore autoplay restrictions.
-    });
-  };
-
   const spawnConfetti = () => {
-    const colors = ["#ff3b3b", "#ffd60a", "#00c853", "#2979ff", "#ff6d00", "#d500f9"];
     const pieces: ConfettiPiece[] = Array.from({ length: 48 }, (_, index) => ({
       id: index + Date.now(),
       left: Math.random() * 100,
@@ -101,7 +79,7 @@ export default function SmartSpinner() {
       duration: 900 + Math.random() * 1000,
       drift: -120 + Math.random() * 240,
       rotation: -260 + Math.random() * 520,
-      color: colors[index % colors.length] ?? "#ff3b3b",
+      color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#ff3b3b",
     }));
 
     setConfettiPieces(pieces);
@@ -114,89 +92,6 @@ export default function SmartSpinner() {
       setConfettiPieces([]);
       confettiTimeoutRef.current = null;
     }, 2300);
-  };
-
-  const stopMotionSensor = () => {
-    if (motionHandlerRef.current) {
-      window.removeEventListener("devicemotion", motionHandlerRef.current);
-      motionHandlerRef.current = null;
-    }
-
-    if (motionTimeoutRef.current !== null) {
-      window.clearTimeout(motionTimeoutRef.current);
-      motionTimeoutRef.current = null;
-    }
-  };
-
-  const enableSimulatedGravity = () => {
-    stopMotionSensor();
-    gravityTargetRef.current = DOWN_ANGLE;
-    setGravityMode("simulated");
-    setSensorStatus(isMobile ? "gravity: simulated down (mobile)" : "gravity: desktop fixed down");
-  };
-
-  const applyMotionGravity = (event: DeviceMotionEvent) => {
-    const accel = event.accelerationIncludingGravity;
-    if (!accel || accel.x === null || accel.y === null) {
-      return;
-    }
-
-    const x = accel.x;
-    const y = accel.y;
-    if (Math.abs(x) + Math.abs(y) < 1) {
-      return;
-    }
-
-    hasSensorRef.current = true;
-    const angle = normalize((Math.atan2(x, -y) * 180) / Math.PI);
-    gravityTargetRef.current = angle;
-    setSensorStatus(`gravity: mobile sensor (${Math.round(angle)}deg)`);
-  };
-
-  const enableDeviceGravity = async () => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (!isMobile) {
-      enableSimulatedGravity();
-      return;
-    }
-
-    stopMotionSensor();
-
-    const maybePermissionApi = DeviceMotionEvent as unknown as DeviceMotionPermissionApi;
-    if (typeof maybePermissionApi.requestPermission === "function") {
-      try {
-        const permission = await maybePermissionApi.requestPermission();
-        if (permission !== "granted") {
-          setSensorStatus("gravity: sensor denied, using simulated down");
-          enableSimulatedGravity();
-          return;
-        }
-      } catch {
-        setSensorStatus("gravity: sensor error, using simulated down");
-        enableSimulatedGravity();
-        return;
-      }
-    }
-
-    hasSensorRef.current = false;
-    setGravityMode("device");
-    setSensorStatus("gravity: reading mobile sensor...");
-
-    const handler = (event: DeviceMotionEvent) => {
-      applyMotionGravity(event);
-    };
-
-    motionHandlerRef.current = handler;
-    window.addEventListener("devicemotion", handler);
-    motionTimeoutRef.current = window.setTimeout(() => {
-      if (!hasSensorRef.current) {
-        setSensorStatus("gravity: no mobile sensor data, using simulated down");
-        enableSimulatedGravity();
-      }
-    }, 1200);
   };
 
   const stopSimulation = (finalRotation: number) => {
@@ -224,13 +119,12 @@ export default function SmartSpinner() {
 
     const currentRotation = rotationRef.current;
     const currentVelocity = velocityRef.current;
-    const gravityTarget = gravityTargetRef.current;
-    const settleError = Math.abs(angleDiff(gravityTarget, currentRotation));
+    const settleError = Math.abs(angleDiff(DOWN_ANGLE, currentRotation));
 
     const nearBottomFactor = Math.max(0, 1 - settleError / END_DAMPING_WINDOW_DEG);
     const adaptiveLinearDamping = DRAG_LINEAR + END_DAMPING_BOOST * nearBottomFactor * nearBottomFactor;
 
-    const gravityTorque = GRAVITY_ACCEL * Math.sin(((gravityTarget - currentRotation) * Math.PI) / 180);
+    const gravityTorque = GRAVITY_ACCEL * Math.sin(((DOWN_ANGLE - currentRotation) * Math.PI) / 180);
     const dragTorque =
       -adaptiveLinearDamping * currentVelocity - DRAG_QUADRATIC * currentVelocity * Math.abs(currentVelocity);
     const angularAcceleration = gravityTorque + dragTorque;
@@ -242,7 +136,7 @@ export default function SmartSpinner() {
     rotationRef.current = nextRotation;
     setRotation(nextRotation);
 
-    const settleErrorNext = Math.abs(angleDiff(gravityTarget, nextRotation));
+    const settleErrorNext = Math.abs(angleDiff(DOWN_ANGLE, nextRotation));
     if (Math.abs(nextVelocity) < STOP_SPEED && settleErrorNext < STOP_ANGLE_ERROR) {
       settleFramesRef.current += 1;
     } else {
@@ -250,7 +144,7 @@ export default function SmartSpinner() {
     }
 
     if (settleFramesRef.current >= STOP_STABLE_FRAMES) {
-      stopSimulation(gravityTargetRef.current);
+      stopSimulation(DOWN_ANGLE);
       return;
     }
 
@@ -260,10 +154,6 @@ export default function SmartSpinner() {
   const spin = () => {
     if (spinning) {
       return;
-    }
-
-    if (isMobile && gravityMode !== "device") {
-      void enableDeviceGravity();
     }
 
     const direction = Math.random() > 0.5 ? 1 : -1;
@@ -286,10 +176,7 @@ export default function SmartSpinner() {
   };
 
   useEffect(() => {
-    gravityTargetRef.current = DOWN_ANGLE;
-
     return () => {
-      stopMotionSensor();
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
@@ -321,6 +208,26 @@ export default function SmartSpinner() {
       <div className="basic-layout">
         <div className="basic-spinner-wrap">
           <div className="basic-wheel" aria-label="spinner wheel">
+            {OPTIONS.map((label, index) => {
+              const centerAngle = 90 + index * SEGMENT_SIZE;
+              const radians = (centerAngle * Math.PI) / 180;
+              const radius = 78;
+              const x = 120 + Math.cos(radians) * radius;
+              const y = 120 + Math.sin(radians) * radius;
+              return (
+                <span
+                  key={label}
+                  className="wheel-label"
+                  style={{
+                    left: `${x}px`,
+                    top: `${y}px`,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  {label}
+                </span>
+              );
+            })}
             <div className="basic-arrow-arm" style={{ transform: `translate(-50%, -100%) rotate(${rotation}deg)` }}>
               <div className="basic-arrow-head" />
             </div>
@@ -330,15 +237,7 @@ export default function SmartSpinner() {
           <button type="button" onClick={spin} disabled={spinning}>
             {spinning ? "spinning..." : "spin"}
           </button>
-          {isMobile ? (
-            <button type="button" onClick={enableDeviceGravity} disabled={gravityMode === "device"}>
-              {gravityMode === "device" ? "mobile gravity on" : "enable mobile gravity"}
-            </button>
-          ) : null}
-            <button type="button" onClick={enableSimulatedGravity} disabled={gravityMode === "simulated"}>
-            simulated gravity
-          </button>
-          <p>{sensorStatus}</p>
+          <p>gravity: always down</p>
           <p>result: {result}</p>
           <audio ref={gongAudioRef} src="/gong.mp3" preload="auto" />
           <audio ref={tadaAudioRef} src="/tada.mp3" preload="auto" />

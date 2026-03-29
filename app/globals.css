@@ -51,6 +51,18 @@ body {
   background: conic-gradient(from 45deg, #ff4d4d 0deg 90deg, #ffd54d 90deg 180deg, #4dff88 180deg 270deg, #4da6ff 270deg 360deg);
 }
 
+.wheel-label {
+  position: absolute;
+  width: 86px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #111111;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .basic-arrow-arm {
   position: absolute;
   top: 50%;
@@ -104,50 +116,6 @@ button:disabled {
 
 p {
   margin: 0;
-}
-
-.vision-debug-panel {
-  width: 340px;
-  border: 1px solid #111111;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  background: #ffffff;
-}
-
-.vision-preview-wrap {
-  position: relative;
-  width: 320px;
-  height: 240px;
-  border: 1px solid #111111;
-  overflow: hidden;
-  background: #222222;
-}
-
-.vision-preview-video,
-.vision-preview-overlay,
-.vision-preview-processed {
-  width: 320px;
-  height: 240px;
-  display: block;
-}
-
-.vision-preview-video {
-  object-fit: cover;
-}
-
-.vision-preview-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-}
-
-.vision-preview-processed {
-  border: 1px solid #111111;
-  image-rendering: pixelated;
 }
 
 .confetti-layer {
