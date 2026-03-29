@@ -23,6 +23,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.basic-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: min(98vw, 1100px);
 }
 
 .basic-spinner-wrap {
@@ -30,6 +39,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  min-width: 260px;
 }
 
 .basic-wheel {
@@ -94,4 +104,84 @@ button:disabled {
 
 p {
   margin: 0;
+}
+
+.vision-debug-panel {
+  width: 340px;
+  border: 1px solid #111111;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  background: #ffffff;
+}
+
+.vision-preview-wrap {
+  position: relative;
+  width: 320px;
+  height: 240px;
+  border: 1px solid #111111;
+  overflow: hidden;
+  background: #222222;
+}
+
+.vision-preview-video,
+.vision-preview-overlay,
+.vision-preview-processed {
+  width: 320px;
+  height: 240px;
+  display: block;
+}
+
+.vision-preview-video {
+  object-fit: cover;
+}
+
+.vision-preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.vision-preview-processed {
+  border: 1px solid #111111;
+  image-rendering: pixelated;
+}
+
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -24px;
+  width: 10px;
+  height: 16px;
+  opacity: 0;
+  animation-name: confettiDrop;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confettiDrop {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--confetti-drift, 0px), 105vh, 0) rotate(var(--confetti-rotate, 360deg));
+  }
+}
+
+@media (max-width: 980px) {
+  .basic-layout {
+    flex-direction: column;
+    align-items: center;
+  }
 }

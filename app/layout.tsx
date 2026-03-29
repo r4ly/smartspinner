@@ -26,7 +26,7 @@ const ibmPlexSans = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: "Smart Spinner",
-  description: "A gravity-powered, AI-certified bad decision wheel.",
+  description: "A gravity-powered bad decision wheel.",
 };
 
 export default function RootLayout({
