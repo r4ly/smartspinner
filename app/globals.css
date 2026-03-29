@@ -1,26 +1,97 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #ffffff;
+  --fg: #111111;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: sans-serif;
+}
+
+.blank-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.basic-spinner-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.basic-wheel {
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  border: 3px solid #111111;
+  position: relative;
+  background: conic-gradient(from 45deg, #ff4d4d 0deg 90deg, #ffd54d 90deg 180deg, #4dff88 180deg 270deg, #4da6ff 270deg 360deg);
+}
+
+.basic-arrow-arm {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 100px;
+  background: #111111;
+  transform-origin: 50% 100%;
+  border-radius: 999px;
+  z-index: 3;
+  will-change: transform;
+}
+
+.basic-arrow-head {
+  position: absolute;
+  top: -19px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 22px solid #111111;
+}
+
+.basic-hub {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #111111;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+button {
+  border: 1px solid #111111;
+  background: #f0f0f0;
+  color: #111111;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+p {
+  margin: 0;
 }
